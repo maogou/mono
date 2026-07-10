@@ -2,93 +2,114 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/urfave/cli/v3"
 )
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintf(os.Stderr, "用法: go run scripts/replace.go <旧项目名> <新项目名>\n")
-		fmt.Fprintf(os.Stderr, "示例: go run scripts/replace.go go_template my_project\n")
+	cmd := &cli.Command{
+		Name:        "replace",
+		Usage:       "将 go_template 模板项目重命名为你自己的项目名",
+		Description: "克隆模板项目后，运行此脚本一键替换项目中所有 go_template 引用，包括 import 路径、go.mod、Makefile、Dockerfile、配置文件和 cmd 入口目录，并执行编译验证。失败时自动通过 git 回滚。",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "old-name",
+				Aliases:  []string{"o"},
+				Usage:    "旧项目名（当前模板名 go_template）",
+				Required: true,
+			},
+			&cli.StringFlag{
+				Name:     "new-name",
+				Aliases:  []string{"n"},
+				Usage:    "新项目名",
+				Required: true,
+			},
+		},
+		Action: func(ctx context.Context, c *cli.Command) error {
+			oldName := c.String("old-name")
+			newName := c.String("new-name")
+
+			re := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*(-[a-zA-Z0-9_]+)*$`)
+			if !re.MatchString(oldName) {
+				return cli.Exit(fmt.Sprintf("错误: 旧项目名 '%s' 不合法", oldName), 1)
+			}
+			if !re.MatchString(newName) {
+				return cli.Exit(fmt.Sprintf("错误: 新项目名 '%s' 不合法", newName), 1)
+			}
+			if oldName == newName {
+				return cli.Exit("错误: 新旧项目名不能相同", 1)
+			}
+
+			projectDir := findProjectRoot()
+			if projectDir == "" {
+				return cli.Exit("错误: 未找到 go.mod，请在项目根目录运行", 1)
+			}
+			if err := os.Chdir(projectDir); err != nil {
+				return cli.Exit(fmt.Sprintf("无法进入项目目录 %s: %v", projectDir, err), 1)
+			}
+
+			ensureCleanWorkTree()
+
+			fmt.Printf("将项目从 '%s' 重命名为 '%s'\n\n", oldName, newName)
+			fmt.Printf("项目目录: %s\n\n", projectDir)
+
+			steps := []struct {
+				name string
+				fn   func() error
+			}{
+				{"替换 Go 源文件 import 路径", func() error { return replaceGoImports(oldName, newName) }},
+				{"替换 go.mod module 名称", func() error {
+					return replaceInFile(
+						"go.mod", "module "+oldName, "module "+newName,
+					)
+				}},
+				{"替换 Makefile", func() error { return replaceInFile("Makefile", oldName, newName) }},
+				{"替换 Dockerfile", func() error { return replaceInFile("Dockerfile", oldName, newName) }},
+				{"替换配置路径引用", func() error { return replaceConfigRefs(oldName, newName) }},
+				{"重命名配置文件", func() error { return renameConfigFile(oldName, newName) }},
+				{"重命名 cmd 入口目录", func() error { return renameCmdDir(oldName, newName) }},
+			}
+
+			for i, step := range steps {
+				fmt.Printf("[%d/%d] %s...\n", i+1, len(steps)+1, step.name)
+				if err := step.fn(); err != nil {
+					gitRollback()
+					return cli.Exit(fmt.Sprintf("%s 失败: %v", step.name, err), 1)
+				}
+			}
+
+			lastStep := len(steps) + 1
+			fmt.Printf("[%d/%d] 执行 go mod tidy...\n", lastStep, lastStep)
+			if err := runCmd("go", "mod", "tidy"); err != nil {
+				gitRollback()
+				return cli.Exit(fmt.Sprintf("go mod tidy 失败: %v", err), 1)
+			}
+
+			fmt.Printf("\n编译验证...\n")
+			if err := runCmd("go", "build", "./..."); err != nil {
+				gitRollback()
+				return cli.Exit(fmt.Sprintf("编译验证 失败: %v", err), 1)
+			}
+
+			fmt.Printf("\n重命名成功!🎉🎉🎉\n")
+			fmt.Printf("  旧项目名: %s\n", oldName)
+			fmt.Printf("  新项目名: %s\n", newName)
+			fmt.Printf("  配置文件: config%s%s.yaml\n", string(filepath.Separator), newName)
+			fmt.Printf("  入口目录: cmd%s%s\n", string(filepath.Separator), newName)
+			return nil
+		},
+	}
+
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		os.Exit(1)
 	}
-	oldName := os.Args[1]
-	newName := os.Args[2]
-
-	re := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*(-[a-zA-Z0-9_]+)*$`)
-	if !re.MatchString(oldName) {
-		fmt.Fprintf(os.Stderr, "错误: 旧项目名 '%s' 不合法\n", oldName)
-		os.Exit(1)
-	}
-	if !re.MatchString(newName) {
-		fmt.Fprintf(os.Stderr, "错误: 新项目名 '%s' 不合法\n", newName)
-		os.Exit(1)
-	}
-	if oldName == newName {
-		fmt.Fprintf(os.Stderr, "错误: 新旧项目名不能相同\n")
-		os.Exit(1)
-	}
-
-	projectDir := findProjectRoot()
-	if projectDir == "" {
-		fatalf("错误: 未找到 go.mod，请在项目根目录运行")
-	}
-	if err := os.Chdir(projectDir); err != nil {
-		fatalf("无法进入项目目录 %s: %v", projectDir, err)
-	}
-
-	ensureCleanWorkTree()
-
-	fmt.Printf("将项目从 '%s' 重命名为 '%s'\n\n", oldName, newName)
-	fmt.Printf("项目目录: %s\n\n", projectDir)
-
-	steps := []struct {
-		name string
-		fn   func() error
-	}{
-		{"替换 Go 源文件 import 路径", func() error { return replaceGoImports(oldName, newName) }},
-		{"替换 go.mod module 名称", func() error {
-			return replaceInFile(
-				"go.mod", "module "+oldName, "module "+newName,
-			)
-		}},
-		{"替换 Makefile", func() error { return replaceInFile("Makefile", oldName, newName) }},
-		{"替换 Dockerfile", func() error { return replaceInFile("Dockerfile", oldName, newName) }},
-		{"替换配置路径引用", func() error { return replaceConfigRefs(oldName, newName) }},
-		{"重命名配置文件", func() error { return renameConfigFile(oldName, newName) }},
-		{"重命名 cmd 入口目录", func() error { return renameCmdDir(oldName, newName) }},
-	}
-
-	for i, step := range steps {
-		fmt.Printf("[%d/%d] %s...\n", i+1, len(steps)+1, step.name)
-		if err := step.fn(); err != nil {
-			gitRollback()
-			fatalf("%s 失败: %v", step.name, err)
-		}
-	}
-
-	lastStep := len(steps) + 1
-	fmt.Printf("[%d/%d] 执行 go mod tidy...\n", lastStep, lastStep)
-	if err := runCmd("go", "mod", "tidy"); err != nil {
-		gitRollback()
-		fatalf("go mod tidy 失败: %v", err)
-	}
-
-	fmt.Printf("\n编译验证...\n")
-	if err := runCmd("go", "build", "./..."); err != nil {
-		gitRollback()
-		fatalf("编译验证 失败: %v", err)
-	}
-
-	fmt.Printf("\n重命名成功🎉🎉🎉!\n")
-	fmt.Printf("  旧项目名: %s\n", oldName)
-	fmt.Printf("  新项目名: %s\n", newName)
-	fmt.Printf("  配置文件: config%s%s.yaml\n", string(filepath.Separator), newName)
-	fmt.Printf("  入口目录: cmd%s%s\n", string(filepath.Separator), newName)
 }
 
 func findProjectRoot() string {
@@ -106,30 +127,28 @@ func findProjectRoot() string {
 }
 
 func ensureCleanWorkTree() {
-	// 检查未暂存的修改
 	if out, err := gitCmd("diff", "--stat"); err != nil || len(out) > 0 {
-		fatalf("错误: git 工作区有未暂存的修改，请先执行 git stash 或 git commit")
+		fmt.Fprintf(os.Stderr, "错误: git 工作区有未暂存的修改，请先执行 git stash 或 git commit\n")
+		os.Exit(1)
 	}
-	// 检查暂存区
 	if out, err := gitCmd("diff", "--stat", "--cached"); err != nil || len(out) > 0 {
-		fatalf("错误: git 暂存区有待提交的内容，请先执行 git commit")
+		fmt.Fprintf(os.Stderr, "错误: git 暂存区有待提交的内容，请先执行 git commit\n")
+		os.Exit(1)
 	}
-	// 检查未跟踪文件
 	if out, err := gitCmd("ls-files", "--others", "--exclude-standard"); err != nil || len(out) > 0 {
-		fatalf("错误: git 工作区有未跟踪的文件，请先清理或提交")
+		fmt.Fprintf(os.Stderr, "错误: git 工作区有未跟踪的文件，请先清理或提交\n")
+		os.Exit(1)
 	}
 }
 
 func gitRollback() {
 	fmt.Fprintf(os.Stderr, "\n通过 git 回滚所有修改...\n")
 
-	// 恢复所有被修改/删除的已跟踪文件
 	if _, err := gitCmd("checkout", "--", "."); err != nil {
 		fmt.Fprintf(os.Stderr, "  警告: git checkout 失败: %v\n", err)
 		return
 	}
 
-	// 删除脚本产生的未跟踪文件（重命名后的新目录/文件）
 	if _, err := gitCmd("clean", "-fd"); err != nil {
 		fmt.Fprintf(os.Stderr, "  警告: git clean 失败: %v\n", err)
 		return
@@ -219,7 +238,6 @@ func renameCmdDir(oldName, newName string) error {
 	}
 	fmt.Printf("  已重命名: %s -> %s\n", oldPath, newDir)
 
-	// 修正 Makefile / Dockerfile 中的旧 cmd 路径引用
 	for _, f := range []string{"Makefile", "Dockerfile"} {
 		if err := replaceInFile(f, oldPathRef, "cmd/"+newName); err != nil {
 			return err
@@ -268,9 +286,4 @@ func runCmd(name string, args ...string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
-}
-
-func fatalf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
 }
