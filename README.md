@@ -35,7 +35,8 @@
 ### 使用说明
 
 - 克隆本仓库到本地
-- go run scripts/replace.go go_template 你的项目名称
+- go run scripts/replace.go -h 
+- 示例：go run scripts/replace.go -o go_template -n 你的项目名
 
 ### 注意事项
 - 本项目没有使用接口层,因为小项目根本没有必要
