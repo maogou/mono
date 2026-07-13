@@ -1,5 +1,5 @@
 APP_NAME := go_template
-GO_MODULE := go_template/cmd/template
+GO_MODULE := go_template/cmd/go_template
 VERSION := $(shell git rev-parse --short HEAD)
 DOCKER_IMAGE := go_template
 HOST_PORT := 8073
