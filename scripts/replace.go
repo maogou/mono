@@ -1,3 +1,5 @@
+//go:build ignore
+
 //nolint:gosec
 package main
 
