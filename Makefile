@@ -14,10 +14,9 @@ build:
 	@echo "编译二进制文件..."
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o ${APP_NAME} ${GO_MODULE}
 
-
 run:
 	@echo "运行服务..."
-	go run ./cmd/template/ start
+	go run ./cmd/${APP_NAME}/ start
 
 docker-build:
 	@echo "构建Docker镜像..."
