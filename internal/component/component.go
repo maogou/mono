@@ -20,3 +20,22 @@ type Component struct {
 	Tm         repository.Transaction
 	ThirdApi   *repository.ThirdApi
 }
+
+func (c *Component) Shutdown() error {
+	c.Log.Info("关闭数据库连接和刷新日志")
+	if c.Db != nil {
+		if sqlDB, err := c.Db.DB(); err == nil {
+			c.Log.Info("关闭数据库连接")
+			_ = sqlDB.Close()
+		}
+	}
+	if c.Rdb != nil {
+		c.Log.Info("关闭redis连接")
+		_ = c.Rdb.Close()
+	}
+	if c.Log != nil {
+		c.Log.Info("刷新日志")
+		_ = c.Log.Sync()
+	}
+	return nil
+}

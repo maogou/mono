@@ -41,6 +41,9 @@ func NewApp() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			return run(&cmd.comp)
 		},
+		After: func(ctx context.Context, c *cli.Command) error {
+			return cmd.comp.Shutdown()
+		},
 	}
 }
 
