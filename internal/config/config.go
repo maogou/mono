@@ -14,7 +14,7 @@ type Config struct {
 	Mode            string `yaml:"mode" mapstructure:"Mode" validate:"required,oneof=debug test release"`
 	ShutdownTimeout int    `yaml:"shutdown_timeout" mapstructure:"ShutdownTimeout" validate:"required,min=5"`
 	ReadTimeout     int    `yaml:"read_timeout" mapstructure:"ReadTimeout" validate:"required,min=5"`
-	Port            int    `yaml:"port" mapstructure:"port" validate:"required"`
+	Port            int    `yaml:"port" mapstructure:"Port" validate:"required"`
 	Log             *Log   `yaml:"log" mapstructure:"Log" validate:"required"`
 	DB              *DB    `yaml:"db" mapstructure:"DB" validate:"required"`
 	Redis           *Redis `yaml:"redis" mapstructure:"Redis" validate:"required"`
