@@ -21,10 +21,7 @@ type RequestParams struct {
 	Params  string              `json:"request_params"`
 }
 
-var noWriteBodyPath = []string{
-	"/api/v1/occupancy/charge/detail",
-	"/api/v1/occupancy/charge/record",
-}
+var noWriteBodyPath = []string{}
 
 func RequestLog(logger *zlog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
@@ -38,9 +35,14 @@ func RequestLog(logger *zlog.Logger) gin.HandlerFunc {
 			Headers: ctx.Request.Header,
 		}
 		if ctx.Request.Body != nil {
-			bodyBytes, _ := ctx.GetRawData()
-			ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-			requestParams.Params = string(bodyBytes)
+			if bodyBytes, err := ctx.GetRawData(); err == nil {
+				ctx.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+				requestParams.Params = string(bodyBytes)
+			} else {
+				requestParams.Params = "read body failed"
+				logger.C(ctx).Error("获取请求体失败", zap.Error(err))
+			}
+
 		}
 		logger.C(ctx).Info("Request", zap.Any("request_params", requestParams))
 		ctx.Writer.Header().Set(constant.Qid, qid)

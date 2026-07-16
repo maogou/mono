@@ -10,10 +10,10 @@ import (
 	"go_template/internal/constant"
 
 	"github.com/gin-gonic/gin"
-	"github.com/natefinch/lumberjack"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -30,9 +30,11 @@ type Logger struct {
 }
 
 func NewZapLog(conf *config.Config) *Logger {
-	once.Do(func() {
-		log = buildLog(conf)
-	})
+	once.Do(
+		func() {
+			log = buildLog(conf)
+		},
+	)
 	return log
 }
 
@@ -154,9 +156,11 @@ func (l *Logger) C(ctx context.Context) *Logger {
 }
 
 func defaultLog() *Logger {
-	once.Do(func() {
-		log = buildDefaultLog()
-	})
+	once.Do(
+		func() {
+			log = buildDefaultLog()
+		},
+	)
 	return log
 }
 
