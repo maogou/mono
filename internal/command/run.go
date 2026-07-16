@@ -40,7 +40,7 @@ func run(c *component.Component) error {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			c.Log.Fatal("监听"+addr+"端口失败", zap.Error(err))
+			c.Log.Warn("监听"+addr+"端口失败", zap.Error(err))
 		}
 	}()
 	quit := make(chan os.Signal, 1)

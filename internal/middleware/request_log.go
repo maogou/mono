@@ -75,6 +75,8 @@ type bodyLogWriter struct {
 }
 
 func (w bodyLogWriter) Write(b []byte) (int, error) {
-	w.body.Write(b)
+	if _, err := w.body.Write(b); err != nil {
+		return 0, err
+	}
 	return w.ResponseWriter.Write(b)
 }
