@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	"go_template/internal/component"
@@ -31,7 +32,7 @@ func run(c *component.Component) error {
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           route,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: time.Duration(c.Conf.ReadTimeout) * time.Second,
 	}
 
 	c.Log.Info("http-api服务访问地址==>http://127.0.0.1" + addr)
@@ -43,10 +44,10 @@ func run(c *component.Component) error {
 		}
 	}()
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(c.Conf.ShutdownTimeout)*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		c.Log.Warn("http-api服务异常,关闭失败")

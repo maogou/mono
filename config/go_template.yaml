@@ -1,6 +1,9 @@
 name: go_template
 mode: debug
 port: 8073
+readTimeout: 5
+shutdownTimeout: 5
+
 
 log:
   level: debug

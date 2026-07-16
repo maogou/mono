@@ -10,12 +10,14 @@ const (
 )
 
 type Config struct {
-	Name  string `yaml:"name" validate:"required"`
-	Mode  string `yaml:"mode" validate:"required,oneof=debug test release"`
-	Port  int    `yaml:"port" validate:"required"`
-	Log   *Log   `yaml:"log" validate:"required"`
-	DB    *DB    `yaml:"db" validate:"required"`
-	Redis *Redis `yaml:"redis" validate:"required"`
+	Name            string `yaml:"name" validate:"required"`
+	Mode            string `yaml:"mode" validate:"required,oneof=debug test release"`
+	ShutdownTimeout int    `yaml:"shutdown_timeout" validate:"required,min=5"`
+	ReadTimeout     int    `yaml:"read_timeout" validate:"required,min=5"`
+	Port            int    `yaml:"port" validate:"required"`
+	Log             *Log   `yaml:"log" validate:"required"`
+	DB              *DB    `yaml:"db" validate:"required"`
+	Redis           *Redis `yaml:"redis" validate:"required"`
 }
 
 type DB struct {
@@ -47,25 +49,25 @@ func MustLoadConfig(cfgFile string) Config {
 	if len(cfgFile) == 0 {
 		cfgFile = DefaultConfigPath
 	}
-	
+
 	conf := viper.New()
-	
+
 	conf.SetConfigFile(cfgFile)
 	conf.SetConfigType("yaml")
-	
+
 	if err := conf.ReadInConfig(); err != nil {
 		panic(err)
 	}
-	
+
 	var config Config
 	if err := conf.Unmarshal(&config); err != nil {
 		panic(err)
 	}
-	
+
 	validate := validator.New()
 	if err := validate.Struct(config); err != nil {
 		panic(err)
 	}
-	
+
 	return config
 }
