@@ -19,6 +19,9 @@
 
 ## 1. 应用启动全流程
 
+<details>
+<summary>📊 应用启动全流程图（点击展开）</summary>
+
 ```mermaid
 flowchart TD
     A["操作系统启动进程"] --> B["main.go 创建 CLI 命令 (start)"]
@@ -71,6 +74,8 @@ flowchart TD
     style C11 fill:#fff9c4
     style D8 fill:#e8f5e9
 ```
+
+</details>
 
 ### 1.1 启动流程详解
 
@@ -203,6 +208,9 @@ flowchart TD
 
 ### 4.1 DI 初始化流程
 
+<details>
+<summary>📊 DI 初始化流程图（点击展开）</summary>
+
 ```mermaid
 flowchart LR
     A[config.LoadConfig] --> B[do.ProvideValue: Config]
@@ -220,6 +228,8 @@ flowchart LR
     style A fill:#e1f5fe
     style L fill:#c8e6c9
 ```
+
+</details>
 
 项目使用 `samber/do/v2` 管理所有组件依赖，注册顺序保证依赖方一定在被依赖方之后初始化。
 
@@ -262,6 +272,9 @@ func InitDemoRouter(r *gin.Engine, i do.Injector) {
 
 ## 5. HTTP 请求全生命周期
 
+<details>
+<summary>📊 HTTP 请求全生命周期图（点击展开）</summary>
+
 ```mermaid
 sequenceDiagram
     participant Client as 客户端
@@ -297,9 +310,14 @@ sequenceDiagram
     Gin-->>Client: HTTP 响应
 ```
 
+</details>
+
 ---
 
 ## 6. 请求追踪与上下文传播
+
+<details>
+<summary>📊 请求追踪与上下文传播图（点击展开）</summary>
 
 ```mermaid
 flowchart TD
@@ -322,6 +340,8 @@ flowchart TD
     style A fill:#fff3e0
     style I fill:#e8f5e9
 ```
+
+</details>
 
 ### 6.1 日志上下文
 
@@ -374,6 +394,9 @@ err := repo.Transaction(ctx, func(txCtx context.Context) error {
 
 ### 8.1 错误流程
 
+<details>
+<summary>📊 错误处理流程图（点击展开）</summary>
+
 ```mermaid
 flowchart LR
     A[业务错误] --> B{错误类型?}
@@ -388,6 +411,8 @@ flowchart LR
     I --> J[记录堆栈到日志]
     J --> K["返回 500 + InternalServerError + qid"]
 ```
+
+</details>
 
 ### 8.2 错误码
 
@@ -408,6 +433,9 @@ flowchart LR
 
 ## 9. 中间件执行链
 
+<details>
+<summary>📊 中间件执行链图（点击展开）</summary>
+
 ```mermaid
 flowchart TD
     Request[HTTP 请求进入] --> M1[1. CustomRecovery\n捕获 panic]
@@ -422,6 +450,8 @@ flowchart TD
     Handler -.->|panic 触发| Recovery[CustomRecovery 拦截]
     Recovery -->|"返回 500 + qid"| Response
 ```
+
+</details>
 
 ### 9.1 RequestLog / ResponseLog
 
@@ -567,9 +597,10 @@ type Demo struct {
 
 | 端点 | 功能 |
 |------|------|
-| `GET /debug/do` | DI 索引页 |
-| `GET /debug/do/scope/:scopeId` | 查看指定 scope |
-| `GET /debug/do/service` | 查看已注册的 service 列表 |
+| `GET /di` | DI 可视化首页 |
+| `GET /di/scope?scope_id=xxx` | 查看指定 scope 的依赖树 |
+| `GET /di/service` | 查看全部已注册 service 列表 |
+| `GET /di/service?scope_id=xxx&service_name=xxx` | 查看指定 service 详情 |
 
 ---
 
@@ -647,11 +678,3 @@ go run scripts/replace.go -o go_template -n 新项目名
 | **上下文传播** | `internal/pkg/zlog/` | qid + 日志字段贯穿全链路 |
 | **优雅关闭** | `internal/command/run.go` | 信号监听 + 超时 Shutdown + 资源清理 |
 | **模板模式** | `internal/repository/repository.go` | Repository 基类提供 `Tx()` 和 `Transaction()` |
-
-
-
-## 19. 作者
-- Email:
-  - kinyou_xy@foxmail.com
-- Wechat:
-  - xingmaogou
