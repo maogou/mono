@@ -3,23 +3,20 @@ package zlog
 import (
 	"context"
 	"os"
-	"sync"
 	"time"
 
 	"go_template/internal/config"
 	"go_template/internal/constant"
 
 	"github.com/gin-gonic/gin"
+	do "github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var (
-	log  *Logger
-	once sync.Once
-)
+var log *Logger
 
 type contextKey string
 
@@ -29,13 +26,15 @@ type Logger struct {
 	*zap.Logger
 }
 
-func NewZapLog(conf *config.Config) *Logger {
-	once.Do(
-		func() {
-			log = buildLog(conf)
-		},
-	)
-	return log
+type Opts struct {
+	Conf *config.Config
+}
+
+func NewZapLog(i do.Injector) (*Logger, error) {
+	conf := do.MustInvoke[*config.Config](i)
+	l := buildLog(conf)
+	log = l
+	return l, nil
 }
 
 func buildLog(conf *config.Config) *Logger {
@@ -109,6 +108,10 @@ func buildLog(conf *config.Config) *Logger {
 	)}
 }
 
+func (l *Logger) Shutdown() error {
+	return l.Sync()
+}
+
 func levelFromString(levelStr string) zapcore.Level {
 	switch levelStr {
 	case "debug":
@@ -155,13 +158,20 @@ func (l *Logger) C(ctx context.Context) *Logger {
 	return l
 }
 
-func defaultLog() *Logger {
-	once.Do(
-		func() {
-			log = buildDefaultLog()
-		},
-	)
-	return log
+func C(ctx context.Context) *Logger {
+	if c, ok := ctx.(*gin.Context); ok {
+		ctx = c.Request.Context()
+	}
+	zl := ctx.Value(CtxLoggerKey)
+	if ctxLogger, ok := zl.(*zap.Logger); ok && ctxLogger != nil {
+		return &Logger{ctxLogger}
+	}
+
+	if log != nil {
+		return log
+	}
+
+	return buildDefaultLog()
 }
 
 func buildDefaultLog() *Logger {
@@ -187,20 +197,4 @@ func buildDefaultLog() *Logger {
 	return &Logger{zap.New(
 		core, zap.AddCaller(), zap.AddStacktrace(zap.ErrorLevel),
 	)}
-}
-
-func C(ctx context.Context) *Logger {
-	if c, ok := ctx.(*gin.Context); ok {
-		ctx = c.Request.Context()
-	}
-	zl := ctx.Value(CtxLoggerKey)
-	if ctxLogger, ok := zl.(*zap.Logger); ok && ctxLogger != nil {
-		return &Logger{ctxLogger}
-	}
-
-	if log != nil {
-		return log
-	}
-
-	return defaultLog()
 }

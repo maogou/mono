@@ -1,18 +1,15 @@
 package router
 
 import (
-	"go_template/internal/component"
-	"go_template/internal/repository"
-	"go_template/internal/service"
-
 	"github.com/gin-gonic/gin"
+	do "github.com/samber/do/v2"
 
 	"go_template/internal/handler"
+	"go_template/internal/service"
 )
 
-func InitDemoRouter(r *gin.Engine, c *component.Component) {
-	demoRepo := repository.NewDemoRepository(c.Repository)
-	demoService := service.NewDemoService(demoRepo, c)
+func InitDemoRouter(r *gin.Engine, i do.Injector) {
+	demoService := do.MustInvoke[*service.DemoService](i)
 	d := handler.NewDemoHandler(demoService)
 	r.GET("/", d.Health)
 }

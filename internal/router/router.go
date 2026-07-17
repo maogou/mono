@@ -1,11 +1,11 @@
 package router
 
 import (
-	"go_template/internal/component"
-
 	"github.com/gin-gonic/gin"
+	do "github.com/samber/do/v2"
 )
 
-func InitRouter(r *gin.Engine, c *component.Component) {
-	InitDemoRouter(r, c)
+func InitRouter(r *gin.Engine, i do.Injector) {
+	initInjectorRouter(r, i)
+	InitDemoRouter(r, i)
 }

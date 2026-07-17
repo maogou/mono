@@ -1,28 +1,27 @@
 name: go_template
 mode: debug
 port: 8073
-readTimeout: 5
-shutdownTimeout: 5
-
+read_timeout: 5
+shutdown_timeout: 5
 
 log:
   level: debug
   filename: go_template.log
-  maxSize: 1024
-  maxAge: 7
-  maxBackups: 3
+  max_size: 1024
+  max_age: 7
+  max_backups: 3
   compress: false
-  encoding: json # json or console
-  mode: console #  file or console or both
+  encoding: json
+  mode: console
 
 db:
   dsn: root:maogou919@tcp(127.0.0.1:3306)/demo?charset=utf8mb4&parseTime=True&loc=Local
-  maxIdleConns: 10      # 最大空闲连接数
-  maxOpenConns: 100      # 最大打开连接数
-  connMaxLifetime: 300 # 连接最大生命周期，单位秒
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 300
 
 redis:
   addr: 127.0.0.1:6379
   password:
   db: 3
-  lockTimeout: 86400
+  lock_timeout: 86400

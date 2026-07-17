@@ -9,6 +9,7 @@ require (
 	github.com/maogou/period v1.0.3
 	github.com/redis/go-redis/v9 v9.21.0
 	github.com/rs/xid v1.6.0
+	github.com/samber/do/v2 v2.0.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/viper v1.21.0
 	github.com/urfave/cli/v3 v3.10.1
@@ -46,6 +47,7 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/quic-go/quic-go v0.60.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
+	github.com/samber/go-type-to-string v1.8.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect

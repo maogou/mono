@@ -21,7 +21,11 @@ type RequestParams struct {
 	Params  string              `json:"request_params"`
 }
 
-var noWriteBodyPath = []string{}
+var noWriteBodyPath = []string{
+	"/di",
+	"/di/scope",
+	"/di/service",
+}
 
 func RequestLog(logger *zlog.Logger) gin.HandlerFunc {
 	return func(ctx *gin.Context) {

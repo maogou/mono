@@ -7,14 +7,18 @@ import (
 	"go_template/internal/pkg/zapgorm"
 	"go_template/internal/pkg/zlog"
 
+	do "github.com/samber/do/v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
-func NewDB(conf *config.Config, l *zlog.Logger) (*gorm.DB, error) {
+func NewDB(i do.Injector) (*gorm.DB, error) {
+	conf := do.MustInvoke[*config.Config](i)
+	logger := do.MustInvoke[*zlog.Logger](i)
+
 	db, err := gorm.Open(
 		mysql.Open(conf.DB.Dsn), &gorm.Config{
-			Logger: zapgorm.New(l.Logger),
+			Logger: zapgorm.New(logger.Logger),
 		},
 	)
 	if err != nil {
@@ -24,7 +28,7 @@ func NewDB(conf *config.Config, l *zlog.Logger) (*gorm.DB, error) {
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		return db, err
+		return nil, err
 	}
 	sqlDB.SetMaxIdleConns(conf.DB.MaxIdleConns)
 	sqlDB.SetMaxOpenConns(conf.DB.MaxOpenConns)

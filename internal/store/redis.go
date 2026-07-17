@@ -7,9 +7,12 @@ import (
 	"go_template/internal/config"
 
 	"github.com/redis/go-redis/v9"
+	do "github.com/samber/do/v2"
 )
 
-func NewRedis(conf *config.Config) (*redis.Client, error) {
+func NewRedis(i do.Injector) (*redis.Client, error) {
+	conf := do.MustInvoke[*config.Config](i)
+
 	rdb := redis.NewClient(
 		&redis.Options{
 			Addr:     conf.Redis.Addr,
