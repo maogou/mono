@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 
 	"go_template/internal/config"
 	"go_template/internal/pkg/zlog"
@@ -17,7 +18,9 @@ type AppCommand struct {
 }
 
 func NewApp() *cli.Command {
-	cmd := &AppCommand{}
+	cmd := &AppCommand{
+		di: do.New(),
+	}
 
 	return &cli.Command{
 		Name:  "start",
@@ -30,9 +33,11 @@ func NewApp() *cli.Command {
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-			if err := cmd.initInjector(c.String("config")); err != nil {
-				return ctx, err
+			conf, err := config.LoadConfig(c.String("config"))
+			if err != nil {
+				return ctx, fmt.Errorf("failed to load config: %w", err)
 			}
+			cmd.initInjector(conf)
 			return ctx, nil
 		},
 		Action: func(ctx context.Context, c *cli.Command) error {

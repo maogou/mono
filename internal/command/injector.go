@@ -1,7 +1,6 @@
 package command
 
 import (
-	"fmt"
 	"github.com/samber/do/v2"
 
 	"go_template/internal/config"
@@ -12,29 +11,18 @@ import (
 	"go_template/internal/store"
 )
 
-func (cmd *AppCommand) initInjector(configPath string) error {
-	conf, err := config.LoadConfig(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
+func (cmd *AppCommand) initInjector(conf config.Config) {
+	do.ProvideValue(cmd.di, &conf)
+	do.Provide(cmd.di, zlog.NewZapLog)
+	do.Provide(cmd.di, store.NewDB)
+	do.Provide(cmd.di, store.NewRedis)
+	do.Provide(cmd.di, httpc.NewClient)
+	do.Provide(cmd.di, repository.NewRepository)
+	do.Provide(cmd.di, repository.NewThirdApi)
+	do.Provide(cmd.di, repository.NewTransaction)
+	do.Provide(cmd.di, repository.NewDemoRepository)
+	do.Provide(cmd.di, service.NewDemoService)
 
-	injector := do.New()
-
-	do.ProvideValue(injector, &conf)
-
-	do.Provide(injector, zlog.NewZapLog)
-	do.Provide(injector, store.NewDB)
-	do.Provide(injector, store.NewRedis)
-	do.Provide(injector, httpc.NewClient)
-	do.Provide(injector, repository.NewRepository)
-	do.Provide(injector, repository.NewThirdApi)
-	do.Provide(injector, repository.NewTransaction)
-	do.Provide(injector, repository.NewDemoRepository)
-	do.Provide(injector, service.NewDemoService)
-
-	cmd.di = injector
-
-	logger := do.MustInvoke[*zlog.Logger](injector)
+	logger := do.MustInvoke[*zlog.Logger](cmd.di)
 	logger.Info("Component initialization completed")
-	return nil
 }
