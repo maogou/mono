@@ -4,8 +4,8 @@ VERSION := $(shell git rev-parse --short HEAD)
 DOCKER_IMAGE := go_template
 HOST_PORT := 8073
 CONTAINER_PORT := 8073
-CLEAN_IMAGE := $(shell docker images -a | grep ${APP_NAME} | awk '{print $$3}')
-CLEAN_CONTAINER := $(shell docker ps -a | grep ${APP_NAME} | awk '{print $$1}')
+CLEAN_IMAGE = $(shell docker images -a | grep ${APP_NAME} | awk '{print $$3}')
+CLEAN_CONTAINER = $(shell docker ps -a | grep ${APP_NAME} | awk '{print $$1}')
 
 
 .PHONY: build run docker-build docker-run clean lint
