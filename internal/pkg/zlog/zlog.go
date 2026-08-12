@@ -16,8 +16,6 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var log *Logger
-
 type contextKey string
 
 const CtxLoggerKey contextKey = "zapLogger"
@@ -26,15 +24,9 @@ type Logger struct {
 	*zap.Logger
 }
 
-type Opts struct {
-	Conf *config.Config
-}
-
 func NewZapLog(i do.Injector) (*Logger, error) {
 	conf := do.MustInvoke[*config.Config](i)
-	l := buildLog(conf)
-	log = l
-	return l, nil
+	return buildLog(conf), nil
 }
 
 func buildLog(conf *config.Config) *Logger {
@@ -166,11 +158,6 @@ func C(ctx context.Context) *Logger {
 	if ctxLogger, ok := zl.(*zap.Logger); ok && ctxLogger != nil {
 		return &Logger{ctxLogger}
 	}
-
-	if log != nil {
-		return log
-	}
-
 	return buildDefaultLog()
 }
 
