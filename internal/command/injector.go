@@ -21,6 +21,7 @@ func (cmd *AppCommand) initInjector(conf config.Config) {
 	do.Provide(cmd.di, repository.ProvideThirdApi)
 	do.Provide(cmd.di, repository.ProvideTransaction)
 	do.Provide(cmd.di, repository.ProvideDemoRepository)
+	do.Provide(cmd.di, service.ProvideService)
 	do.Provide(cmd.di, service.ProvideDemoService)
 
 	logger := do.MustInvoke[*zlog.Logger](cmd.di)

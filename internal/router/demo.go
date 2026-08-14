@@ -9,7 +9,7 @@ import (
 )
 
 func InitDemoRouter(r *gin.Engine, i do.Injector) {
-	demoService := do.MustInvoke[*service.DemoService](i)
+	demoService := do.MustInvoke[service.DemoService](i)
 	d := handler.NewDemoHandler(demoService)
 	r.GET("/", d.Health)
 }

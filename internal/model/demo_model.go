@@ -9,6 +9,7 @@ type Demo struct {
 	ID              uint64     `gorm:"column:id;primaryKey;autoIncrement;unsigned" json:"id"`
 	Name            string     `gorm:"column:name;type:varchar(255);not null" json:"name"`
 	Email           string     `gorm:"column:email;type:varchar(255);not null;uniqueIndex:users_email_unique" json:"email"`
+	ParkCode        int64      `gorm:"column:park_code;not null" json:"park_code"`
 	EmailVerifiedAt *time.Time `gorm:"column:email_verified_at;default:null" json:"email_verified_at"`
 	Password        string     `gorm:"column:password;type:varchar(255);not null" json:"password"`
 	RememberToken   *string    `gorm:"column:remember_token;type:varchar(100);default:null" json:"remember_token"`

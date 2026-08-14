@@ -10,21 +10,26 @@ import (
 	"go.uber.org/zap"
 )
 
-type DemoService struct {
-	demoRepo *repository.DemoRepository
-	tm       repository.Transaction
-	log      *zlog.Logger
+type DemoService interface {
+	Create(ctx context.Context, req *v1.AddAuthRequest) error
+	GetDemo(ctx context.Context, parkCode int64) (any, error)
 }
 
-func NewDemoService(demoRepo *repository.DemoRepository, tm repository.Transaction, log *zlog.Logger) *DemoService {
-	return &DemoService{
+func NewDemoService(s *Service, demoRepo repository.DemoRepository, tm repository.Transaction) DemoService {
+	return &demoService{
 		demoRepo: demoRepo,
 		tm:       tm,
-		log:      log,
+		Service:  s,
 	}
 }
 
-func (ds *DemoService) Create(ctx context.Context, req *v1.AddAuthRequest) error {
+type demoService struct {
+	demoRepo repository.DemoRepository
+	tm       repository.Transaction
+	*Service
+}
+
+func (ds *demoService) Create(ctx context.Context, req *v1.AddAuthRequest) error {
 	return ds.tm.Transaction(
 		ctx, func(ctx context.Context) error {
 			return nil
@@ -32,7 +37,7 @@ func (ds *DemoService) Create(ctx context.Context, req *v1.AddAuthRequest) error
 	)
 }
 
-func (ds *DemoService) GetDemo(ctx context.Context, parkCode int64) (any, error) {
+func (ds *demoService) GetDemo(ctx context.Context, parkCode int64) (any, error) {
 	zlog.C(ctx).Info("service", zap.Int64("park_code", parkCode))
 	return nil, nil
 }

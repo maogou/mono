@@ -46,3 +46,31 @@ clean:
 lint:
 	@echo "代码检查..."
 	golangci-lint run  ./...
+
+MOCKGEN := go run go.uber.org/mock/mockgen@v0.6.0
+
+# 覆盖率报告用浏览器打开,按操作系统选择命令
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+OPEN_CMD := open
+endif
+ifeq ($(UNAME_S),Linux)
+OPEN_CMD := xdg-open
+endif
+
+.PHONY: mock test coverage
+
+mock:
+	@echo "生成mock文件..."
+	$(MOCKGEN) -source=internal/repository/repository.go -destination=test/mocks/repository/repository.go
+	$(MOCKGEN) -source=internal/repository/demo_repo.go -destination=test/mocks/repository/demo_repo.go
+	$(MOCKGEN) -source=internal/service/demo_service.go -destination=test/mocks/service/demo_service.go
+
+test:
+	@echo "运行测试..."
+	go test -coverpkg=./internal/repository,./internal/service -coverprofile=./coverage.out ./test/server/...
+
+coverage: test
+	@echo "生成覆盖率报告..."
+	go tool cover -html=coverage.out -o coverage.html
+	@if [ -n "$(OPEN_CMD)" ]; then echo "打开 coverage.html ..."; $(OPEN_CMD) coverage.html; else echo "请手动打开 coverage.html"; fi

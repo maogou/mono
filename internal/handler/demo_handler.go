@@ -12,10 +12,10 @@ import (
 )
 
 type DemoHandler struct {
-	ds *service.DemoService
+	ds service.DemoService
 }
 
-func NewDemoHandler(ds *service.DemoService) *DemoHandler {
+func NewDemoHandler(ds service.DemoService) *DemoHandler {
 	return &DemoHandler{
 		ds: ds,
 	}

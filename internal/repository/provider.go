@@ -28,6 +28,6 @@ func ProvideTransaction(i do.Injector) (Transaction, error) {
 	return NewTransaction(do.MustInvoke[*Repository](i)), nil
 }
 
-func ProvideDemoRepository(i do.Injector) (*DemoRepository, error) {
+func ProvideDemoRepository(i do.Injector) (DemoRepository, error) {
 	return NewDemoRepository(do.MustInvoke[*Repository](i)), nil
 }
