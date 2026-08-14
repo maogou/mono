@@ -3,8 +3,6 @@ package repository
 import (
 	"context"
 
-	do "github.com/samber/do/v2"
-
 	"go_template/internal/model"
 )
 
@@ -12,11 +10,10 @@ type DemoRepository struct {
 	*Repository
 }
 
-func NewDemoRepository(i do.Injector) (*DemoRepository, error) {
-	r := do.MustInvoke[*Repository](i)
+func NewDemoRepository(r *Repository) *DemoRepository {
 	return &DemoRepository{
 		Repository: r,
-	}, nil
+	}
 }
 
 func (d *DemoRepository) Delete(ctx context.Context, parkCode int64) error {

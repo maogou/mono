@@ -6,7 +6,6 @@ import (
 	"go_template/internal/pkg/zlog"
 
 	"github.com/go-resty/resty/v2"
-	do "github.com/samber/do/v2"
 	"go.uber.org/zap"
 )
 
@@ -18,9 +17,8 @@ var DefaultOptions = ClientOptions{
 	Timeout: 3 * time.Second,
 }
 
-func NewClient(i do.Injector) (*resty.Client, error) {
-	logger := do.MustInvoke[*zlog.Logger](i)
-	return NewClientWithOptions(logger, DefaultOptions), nil
+func NewClient(logger *zlog.Logger) *resty.Client {
+	return NewClientWithOptions(logger, DefaultOptions)
 }
 
 func NewClientWithOptions(logger *zlog.Logger, options ClientOptions) *resty.Client {

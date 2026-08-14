@@ -9,7 +9,6 @@ import (
 	"go_template/internal/constant"
 
 	"github.com/gin-gonic/gin"
-	do "github.com/samber/do/v2"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -24,9 +23,8 @@ type Logger struct {
 	*zap.Logger
 }
 
-func NewZapLog(i do.Injector) (*Logger, error) {
-	conf := do.MustInvoke[*config.Config](i)
-	return buildLog(conf), nil
+func NewZapLog(conf *config.Config) *Logger {
+	return buildLog(conf)
 }
 
 func buildLog(conf *config.Config) *Logger {

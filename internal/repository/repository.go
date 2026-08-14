@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/go-resty/resty/v2"
-	do "github.com/samber/do/v2"
 
 	"go_template/internal/config"
 	"go_template/internal/pkg/zlog"
@@ -27,33 +26,27 @@ type ThirdApi struct {
 	conf   *config.Config
 }
 
-func NewThirdApi(i do.Injector) (*ThirdApi, error) {
-	logger := do.MustInvoke[*zlog.Logger](i)
-	conf := do.MustInvoke[*config.Config](i)
-	client := do.MustInvoke[*resty.Client](i)
+func NewThirdApi(logger *zlog.Logger, conf *config.Config, client *resty.Client) *ThirdApi {
 	return &ThirdApi{
 		logger: logger,
 		client: client,
 		conf:   conf,
-	}, nil
+	}
 }
 
-func NewRepository(i do.Injector) (*Repository, error) {
-	logger := do.MustInvoke[*zlog.Logger](i)
-	db := do.MustInvoke[*gorm.DB](i)
+func NewRepository(db *gorm.DB, logger *zlog.Logger) *Repository {
 	return &Repository{
 		db:     db,
 		logger: logger,
-	}, nil
+	}
 }
 
 type Transaction interface {
 	Transaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
-func NewTransaction(i do.Injector) (Transaction, error) {
-	r := do.MustInvoke[*Repository](i)
-	return r, nil
+func NewTransaction(r *Repository) Transaction {
+	return r
 }
 
 func (r *Repository) Tx(ctx context.Context) *gorm.DB {

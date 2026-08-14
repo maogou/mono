@@ -7,26 +7,20 @@ import (
 	"go_template/internal/config"
 
 	"github.com/redis/go-redis/v9"
-	do "github.com/samber/do/v2"
 )
 
-func NewRedis(i do.Injector) (*redis.Client, error) {
-	conf := do.MustInvoke[*config.Config](i)
-
-	rdb := redis.NewClient(
+func NewRedisClient(conf *config.Redis) *redis.Client {
+	return redis.NewClient(
 		&redis.Options{
-			Addr:     conf.Redis.Addr,
-			Password: conf.Redis.Password,
-			DB:       conf.Redis.DB,
+			Addr:     conf.Addr,
+			Password: conf.Password,
+			DB:       conf.DB,
 		},
 	)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(conf.Redis.LockTimeout)*time.Second)
+func PingRedis(rdb *redis.Client, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-
-	if _, err := rdb.Ping(ctx).Result(); err != nil {
-		return nil, err
-	}
-
-	return rdb, nil
+	return rdb.Ping(ctx).Err()
 }

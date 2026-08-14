@@ -20,20 +20,24 @@ import (
 	"go.uber.org/zap"
 )
 
-func run(i do.Injector) error {
-	conf := do.MustInvoke[*config.Config](i)
-	logger := do.MustInvoke[*zlog.Logger](i)
-
+func newEngine(conf *config.Config, logger *zlog.Logger, i do.Injector) *gin.Engine {
 	gin.SetMode(conf.Mode)
 	route := gin.New()
-
-	addr := ":" + strconv.Itoa(conf.Port)
 	route.Use(
 		gin.CustomRecovery(middleware.CustomRecovery(logger)),
 		middleware.RequestLog(logger), middleware.ResponseLog(logger),
 	)
 	router.InitRouter(route, i)
+	return route
+}
 
+func run(i do.Injector) error {
+	conf := do.MustInvoke[*config.Config](i)
+	logger := do.MustInvoke[*zlog.Logger](i)
+
+	route := newEngine(conf, logger, i)
+
+	addr := ":" + strconv.Itoa(conf.Port)
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           route,

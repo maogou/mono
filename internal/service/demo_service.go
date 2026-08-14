@@ -7,7 +7,6 @@ import (
 	"go_template/internal/pkg/zlog"
 	"go_template/internal/repository"
 
-	do "github.com/samber/do/v2"
 	"go.uber.org/zap"
 )
 
@@ -17,15 +16,12 @@ type DemoService struct {
 	log      *zlog.Logger
 }
 
-func NewDemoService(i do.Injector) (*DemoService, error) {
-	demoRepo := do.MustInvoke[*repository.DemoRepository](i)
-	tm := do.MustInvoke[repository.Transaction](i)
-	log := do.MustInvoke[*zlog.Logger](i)
+func NewDemoService(demoRepo *repository.DemoRepository, tm repository.Transaction, log *zlog.Logger) *DemoService {
 	return &DemoService{
 		demoRepo: demoRepo,
 		tm:       tm,
 		log:      log,
-	}, nil
+	}
 }
 
 func (ds *DemoService) Create(ctx context.Context, req *v1.AddAuthRequest) error {
