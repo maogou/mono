@@ -38,11 +38,11 @@ func CeilDiv[T int | int64](a, b T) T {
 }
 
 func FormatPeriods(p []period.Period) string {
-	var result string
+	var result strings.Builder
 	for _, v := range p {
-		result += v.Format(time.DateTime) + ","
+		result.WriteString(v.Format(time.DateTime) + ",")
 	}
-	return strings.TrimRight(result, ",")
+	return strings.TrimRight(result.String(), ",")
 }
 
 func BuildTime(date time.Time, t time.Time) time.Time {
@@ -70,4 +70,13 @@ func FormatAmount(amount int64) string {
 		return "0.00"
 	}
 	return fmt.Sprintf("%.2f", float64(amount)/100)
+}
+
+func WithGinValues(c *gin.Context) context.Context {
+	ctx := c.Request.Context()
+	for k, v := range c.Keys {
+		ctx = context.WithValue(ctx, k, v)
+	}
+
+	return ctx
 }
