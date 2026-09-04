@@ -44,25 +44,27 @@ func NewApp() *cli.Command {
 			return run(cmd.di)
 		},
 		After: func(ctx context.Context, c *cli.Command) error {
-			return cmd.shutdown()
+			return shutdownResources(cmd.di)
 		},
 	}
 }
 
-func (cmd *AppCommand) shutdown() error {
-	db, _ := do.Invoke[*gorm.DB](cmd.di)
+// shutdownResources 关闭注入器中的 DB/Redis 并同步日志(zap 落盘)。
+// cli After(常规退出路径)与 run() 重启分支(exec 换壳前)共用同一实现,收尾逻辑单一。
+func shutdownResources(i do.Injector) error {
+	db, _ := do.Invoke[*gorm.DB](i)
 	if db != nil {
 		if sqlDB, err := db.DB(); err == nil {
 			_ = sqlDB.Close()
 		}
 	}
 
-	rdb, _ := do.Invoke[*redis.Client](cmd.di)
+	rdb, _ := do.Invoke[*redis.Client](i)
 	if rdb != nil {
 		_ = rdb.Close()
 	}
 
-	logger, _ := do.Invoke[*zlog.Logger](cmd.di)
+	logger, _ := do.Invoke[*zlog.Logger](i)
 	if logger != nil {
 		_ = logger.Sync()
 	}

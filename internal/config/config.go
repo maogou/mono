@@ -12,14 +12,15 @@ const (
 )
 
 type Config struct {
-	Name            string `yaml:"name" mapstructure:"name" validate:"required"`
-	Mode            string `yaml:"mode" mapstructure:"mode" validate:"required,oneof=debug test release"`
-	ShutdownTimeout int    `yaml:"shutdown_timeout" mapstructure:"shutdown_timeout" validate:"required,min=5"`
-	ReadTimeout     int    `yaml:"read_timeout" mapstructure:"read_timeout" validate:"required,min=5"`
-	Port            int    `yaml:"port" mapstructure:"port" validate:"required"`
-	Log             *Log   `yaml:"log" mapstructure:"log" validate:"required"`
-	DB              *DB    `yaml:"db" mapstructure:"db" validate:"required"`
-	Redis           *Redis `yaml:"redis" mapstructure:"redis" validate:"required"`
+	Name            string  `yaml:"name" mapstructure:"name" validate:"required"`
+	Mode            string  `yaml:"mode" mapstructure:"mode" validate:"required,oneof=debug test release"`
+	ShutdownTimeout int     `yaml:"shutdown_timeout" mapstructure:"shutdown_timeout" validate:"required,min=5"`
+	ReadTimeout     int     `yaml:"read_timeout" mapstructure:"read_timeout" validate:"required,min=5"`
+	Port            int     `yaml:"port" mapstructure:"port" validate:"required"`
+	Log             *Log    `yaml:"log" mapstructure:"log" validate:"required"`
+	DB              *DB     `yaml:"db" mapstructure:"db" validate:"required"`
+	Redis           *Redis  `yaml:"redis" mapstructure:"redis" validate:"required"`
+	Update          *Update `yaml:"update" mapstructure:"update" validate:"omitempty"`
 }
 
 type DB struct {
@@ -34,6 +35,20 @@ type Redis struct {
 	Password    string `yaml:"password" mapstructure:"password"`
 	DB          int    `yaml:"db" mapstructure:"db"`
 	LockTimeout int    `yaml:"lock_timeout" mapstructure:"lock_timeout" validate:"required,min=1"`
+}
+
+// Update 为进程自升级配置。整个段缺省(指针为 nil)即关闭,不破坏最小配置。
+// 版本号不在本段指定:比较基准为编译期内置常量 internal/constant.Version
+// (发版=改常量后重新编译);另可被环境变量 UPDATE_CURRENT_VERSION 覆盖
+// (升级流程重启前自用注入,防一次重启内重复升级)。
+// 信任边界:校验仅 md5 完整性(按服务端既有契约选定,防损坏/误传,非认证),
+// 更新源本身须可信(建议 HTTPS/内网隔离),见 doc/self-update.md。
+type Update struct {
+	Enable          bool   `yaml:"enable" mapstructure:"enable"`
+	CheckInterval   int    `yaml:"check_interval" mapstructure:"check_interval" validate:"omitempty,min=30"`
+	CheckURL        string `yaml:"check_url" mapstructure:"check_url" validate:"omitempty,url"`
+	DownloadTimeout int    `yaml:"download_timeout" mapstructure:"download_timeout" validate:"omitempty,min=1"`
+	MaxSizeMB       int64  `yaml:"max_size_mb" mapstructure:"max_size_mb" validate:"omitempty,min=1"`
 }
 
 type Log struct {

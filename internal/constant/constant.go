@@ -6,4 +6,5 @@ const (
 	File       = "file"
 	Release    = "release"
 	Time235959 = "23:59:59"
+	Version    = "v1.3.0"
 )

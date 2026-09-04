@@ -663,11 +663,34 @@ make docker-run
 
 # 项目重命名
 go run scripts/replace.go -o go_template -n 新项目名
+
+# 自升级清单生成(发布用,详见 doc/self-update.md;版本号先改 internal/constant.Version,此工具缺省读取)
+go run scripts/manifest/main.go --binary ./go_template --download-url http://.../go_template-v1.2.3
 ```
 
 ---
 
-## 18. 关键设计模式
+## 18. 进程自升级(可选能力)
+
+进程自升级 = 「检查 → 下载 → md5 校验 → 原子替换 → 优雅停服 → 同 PID 重启」的完整链路，机制参考 minio 系方案（minio/minio 仅借鉴机制、代码自研；替换委托 Apache-2.0 的 `minio/selfupdate`）。
+
+- 代码：`internal/pkg/updater/`（自包含组件，不依赖 internal/config）
+- 入口配置：`config/go_template.yaml` 的 `update:` 段（默认关闭）
+- 完整机制 / 服务端 JSON 契约 / 发布步骤 / 运维说明：见 `doc/self-update.md`
+
+```yaml
+update:
+  enable: true
+  check_interval: 300        # 检查周期(秒)
+  check_url: http://update.example.com/manifest
+```
+版本号编译期内建于 `internal/constant.Version`(不在本配置指定,发版 = bump 常量后重新编译)。
+
+能力边界：支持 Linux / macOS / Windows 就地自升级（Linux/macOS 为 execve 同 PID 换壳，对 supervise 守护无感；Windows 按 minio 语义拉起新实例并等待其退出）；目标场景为裸机 / 单容器 / supervise 守护；k8s 多副本不适用。更新源返回「md5 + download_url」清单，客户端只做 md5 完整性比对（md5 按服务端既有契约选定，仅防损坏/误传、非认证）；信任根 = 更新源本身，须走 HTTPS/内网隔离（明文 HTTP + 源被攻破即可推送任意代码），详见 doc/self-update.md §6。
+
+---
+
+## 19. 关键设计模式
 
 | 模式 | 实现位置 | 说明 |
 |------|---------|------|

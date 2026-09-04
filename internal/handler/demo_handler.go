@@ -1,9 +1,10 @@
 package handler
 
 import (
+	"time"
+
 	"go_template/internal/pkg/zlog"
 	"go_template/internal/service"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func NewDemoHandler(ds service.DemoService) *DemoHandler {
 }
 
 func (d *DemoHandler) Health(ctx *gin.Context) {
-	zlog.C(ctx).Info("aaa", zap.String("aa", "cc"))
+	zlog.C(ctx).Info("aaa", zap.String("aa", "cc44444444444"))
 	_, _ = d.ds.GetDemo(ctx, 6000060000)
 	response.Success(
 		ctx,

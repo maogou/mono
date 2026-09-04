@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS builder
+FROM golang:1.27-alpine AS builder
 ENV CGO_ENABLED=0
 ENV GOPROXY=https://goproxy.cn
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
@@ -7,7 +7,7 @@ WORKDIR /build
 COPY go.mod go.sum ./
 COPY . .
 RUN CGO_ENABLED=0  go build  -ldflags="-s -w" -o go_template ./cmd/go_template
-FROM alpine:3.17 AS final
+FROM alpine:3.24 AS final
 COPY --from=builder /usr/share/zoneinfo/Asia/Shanghai /usr/share/zoneinfo/Asia/Shanghai
 ENV TZ=Asia/Shanghai
 WORKDIR /app

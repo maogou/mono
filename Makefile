@@ -8,7 +8,7 @@ CLEAN_IMAGE = $(shell docker images -a | grep ${APP_NAME} | awk '{print $$3}')
 CLEAN_CONTAINER = $(shell docker ps -a | grep ${APP_NAME} | awk '{print $$1}')
 
 
-.PHONY: build run docker-build docker-run clean lint
+.PHONY: build run docker-build docker-run clean lint manifest
 
 build:
 	@echo "编译二进制文件..."
@@ -47,6 +47,10 @@ lint:
 	@echo "代码检查..."
 	golangci-lint run  ./...
 
+manifest:
+	@echo "生成自升级清单 JSON(见 doc/self-update.md)..."
+	go run scripts/manifest/main.go $(ARGS)
+
 MOCKGEN := go run go.uber.org/mock/mockgen@v0.6.0
 
 # 覆盖率报告用浏览器打开,按操作系统选择命令
@@ -68,7 +72,7 @@ mock:
 
 test:
 	@echo "运行测试..."
-	go test -coverpkg=./internal/repository,./internal/service -coverprofile=./coverage.out ./test/server/...
+	go test -coverpkg=./internal/repository,./internal/service,./internal/pkg/updater -coverprofile=./coverage.out ./test/server/... ./internal/pkg/updater/...
 
 coverage: test
 	@echo "生成覆盖率报告..."

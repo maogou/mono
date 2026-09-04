@@ -25,3 +25,10 @@ redis:
   password:
   db: 3
   lock_timeout: 86400
+
+update:
+  enable: true
+  check_interval: 30    # 检查周期(秒),最小 30
+  check_url: http://demo.xxxx.com/demo
+  download_timeout: 600 # 下载超时(秒),缺省 30
+  # max_size_mb: 128     # 下载包上限(MB),缺省 128
