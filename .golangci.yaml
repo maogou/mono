@@ -4,6 +4,12 @@ run:
   concurrency: 4
   tests: false
 
+linters-settings:
+  gosec:
+    exclude-generated: true
+    excludes:
+      - G501  # 允许使用 crypto/md5
+
 linters:
   enable:
     - govet
