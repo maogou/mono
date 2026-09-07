@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -27,23 +28,31 @@ func TestApplySuccessReplacesBinary(t *testing.T) {
 	payload := []byte("NEW-BINARY-CONTENT-v2")
 	m := &Manifest{MD5: md5HexOf(payload)}
 
+	// 权限沿用现役文件:Windows 无执行位概念恒为 0666,故以"与替换前一致"
+	// 为断言,unix 下即等于 newApplyTarget 写入的 0755
+	info, err := os.Stat(bin)
+	require.NoError(t, err)
+	modeBefore := info.Mode().Perm()
+
 	require.NoError(t, u.apply(m, payload))
 
 	got, err := os.ReadFile(bin)
 	require.NoError(t, err)
 	require.Equal(t, payload, got)
 
-	// 权限沿用现役文件的 0755,且无 .new/.old 残留
-	info, err := os.Stat(bin)
+	info, err = os.Stat(bin)
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o755), info.Mode().Perm())
+	require.Equal(t, modeBefore, info.Mode().Perm(), "权限位应沿用现役文件")
 
-	entries, err := os.ReadDir(filepath.Dir(bin))
-	require.NoError(t, err)
-	for _, e := range entries {
-		require.False(t,
-			strings.HasSuffix(e.Name(), ".new") || strings.HasSuffix(e.Name(), ".old"),
-			"残留临时文件: %s", e.Name())
+	if runtime.GOOS != "windows" {
+		// 无 .new/.old 残留;windows 上库对移除失败的 .old 采用隐藏(库文档行为),不适用
+		entries, err := os.ReadDir(filepath.Dir(bin))
+		require.NoError(t, err)
+		for _, e := range entries {
+			require.False(t,
+				strings.HasSuffix(e.Name(), ".new") || strings.HasSuffix(e.Name(), ".old"),
+				"残留临时文件: %s", e.Name())
+		}
 	}
 }
 
@@ -61,12 +70,10 @@ func TestApplyChecksumMismatchKeepsOldFile(t *testing.T) {
 	require.Equal(t, []byte("OLD-BINARY"), got, "失败时不得改动现役文件")
 }
 
-// TestCommitFailureKeepsOldFile 用只读目录模拟 commit 阶段的 rename 失败:
+// TestCommitFailureKeepsOldFile 模拟 commit 阶段的 rename 失败(失败注入方式见
+// blockCommit,unix=只读目录,windows=独占句柄):
 // 验证旧文件仍在原处、错误类别正确、且未触发"回滚失败"误报(RollbackError == nil)。
 func TestCommitFailureKeepsOldFile(t *testing.T) {
-	if os.Geteuid() == 0 {
-		t.Skip("root 不受目录权限约束,跳过只读目录用例")
-	}
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "app")
 	require.NoError(t, os.WriteFile(bin, []byte("OLD-BINARY"), 0o755))
@@ -83,9 +90,8 @@ func TestCommitFailureKeepsOldFile(t *testing.T) {
 	// 第 1 步 prepare 正常(此时目录可写),产出 .app.new
 	require.NoError(t, selfupdate.PrepareAndCheckBinary(bytes.NewReader(payload), opts))
 
-	// 第 2 步把目录改只读,commit 的 rename 必然失败
-	require.NoError(t, os.Chmod(dir, 0o555))
-	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+	// 第 2 步起让 commit 的 rename 在"旧文件移开"一步即失败
+	blockCommit(t, bin, dir)
 
 	err := selfupdate.CommitBinary(opts)
 	require.Error(t, err)
