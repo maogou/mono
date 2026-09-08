@@ -30,7 +30,7 @@ func main() {
 			&cli.StringFlag{
 				Name:     "new-name",
 				Aliases:  []string{"n"},
-				Usage:    "新项目名",
+				Usage:    "新项目名(支持单段名或模块路径,如 aaaa/cccc、github.com/xxx)",
 				Required: true,
 			},
 		},
@@ -38,7 +38,9 @@ func main() {
 			oldName := c.String("old-name")
 			newName := c.String("new-name")
 
-			re := regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*(-[a-zA-Z0-9_]+)*$`)
+			// 支持单段项目名(go_template)和带路径的模块名(如 aaaa/cccc、github.com/xxx),
+			// 各路径段不允许以 - 或 . 开头,段间用 / 分隔
+			re := regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9._~-]*(?:/[a-zA-Z0-9_][a-zA-Z0-9._~-]*)*$`)
 			if !re.MatchString(oldName) {
 				return cli.Exit(fmt.Sprintf("错误: 旧项目名 '%s' 不合法", oldName), 1)
 			}
@@ -48,6 +50,11 @@ func main() {
 			if oldName == newName {
 				return cli.Exit("错误: 新旧项目名不能相同", 1)
 			}
+
+			// 模块路径用于 import / go.mod 等路径位置;
+			// 目录、文件等单段命名位置(二进制名、config/*.yaml、cmd/ 目录等)只取最后一段
+			oldBase := pathBase(oldName)
+			newBase := pathBase(newName)
 
 			projectDir := findProjectRoot()
 			if projectDir == "" {
@@ -72,11 +79,16 @@ func main() {
 						"go.mod", "module "+oldName, "module "+newName,
 					)
 				}},
-				{"替换 Makefile", func() error { return replaceInFile("Makefile", oldName, newName) }},
-				{"替换 Dockerfile", func() error { return replaceInFile("Dockerfile", oldName, newName) }},
-				{"替换配置路径引用", func() error { return replaceConfigRefs(oldName, newName) }},
-				{"重命名配置文件", func() error { return renameConfigFile(oldName, newName) }},
-				{"重命名 cmd 入口目录", func() error { return renameCmdDir(oldName, newName) }},
+				{"更新 Makefile", func() error { return replaceMakefile(oldName, newName, oldBase, newBase) }},
+				{"更新 Dockerfile", func() error { return replaceInFile("Dockerfile", oldBase, newBase) }},
+				{"更新 GitHub Actions 工作流", func() error {
+					return replaceInFile(
+						filepath.Join(".github", "workflows", "go.yml"), oldBase, newBase,
+					)
+				}},
+				{"替换配置路径引用", func() error { return replaceConfigRefs(oldBase, newBase) }},
+				{"重命名配置文件", func() error { return renameConfigFile(oldBase, newBase) }},
+				{"重命名 cmd 入口目录", func() error { return renameCmdDir(oldBase, newBase) }},
 			}
 
 			for i, step := range steps {
@@ -102,9 +114,9 @@ func main() {
 
 			fmt.Printf("\n重命名成功!🎉🎉🎉\n")
 			fmt.Printf("  旧项目名: %s\n", oldName)
-			fmt.Printf("  新项目名: %s\n", newName)
-			fmt.Printf("  配置文件: config%s%s.yaml\n", string(filepath.Separator), newName)
-			fmt.Printf("  入口目录: cmd%s%s\n", string(filepath.Separator), newName)
+			fmt.Printf("  新项目名(模块路径): %s\n", newName)
+			fmt.Printf("  配置文件: config%s%s.yaml\n", string(filepath.Separator), newBase)
+			fmt.Printf("  入口目录: cmd%s%s\n", string(filepath.Separator), newBase)
 			return nil
 		},
 	}
@@ -194,22 +206,51 @@ func replaceGoImports(oldName, newName string) error {
 	return nil
 }
 
-func replaceConfigRefs(oldName, newName string) error {
+// pathBase 返回模块路径形式的项目名的最后一段,
+// 用于目录、文件等单段命名位置: github.com/xxx -> xxx; aaaa/cccc -> cccc; go_template -> go_template
+func pathBase(name string) string {
+	if i := strings.LastIndex(name, "/"); i >= 0 {
+		return name[i+1:]
+	}
+	return name
+}
+
+// replaceMakefile 更新 Makefile 中的项目名引用。
+// APP_NAME / DOCKER_IMAGE 等单段命名整行替换;GO_MODULE 需拼接完整模块路径,
+// 避免把模块路径形式的新名错误替换成目录名(如 github.com/xxx/cmd/github.com/xxx)。
+func replaceMakefile(oldModule, newModule, oldBase, newBase string) error {
+	replacements := []struct{ old, new string }{
+		{"APP_NAME := " + oldBase, "APP_NAME := " + newBase},
+		{"DOCKER_IMAGE := " + oldBase, "DOCKER_IMAGE := " + newBase},
+		{
+			"GO_MODULE := " + oldModule + "/cmd/" + oldBase,
+			"GO_MODULE := " + newModule + "/cmd/" + newBase,
+		},
+	}
+	for _, r := range replacements {
+		if err := replaceInFile("Makefile", r.old, r.new); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func replaceConfigRefs(oldBase, newBase string) error {
 	if err := replaceInFile(
 		filepath.Join("internal", "config", "config.go"),
-		oldName+".yaml", newName+".yaml",
+		oldBase+".yaml", newBase+".yaml",
 	); err != nil {
 		return err
 	}
 	return replaceInFile(
 		filepath.Join("internal", "pkg", "zlog", "zlog.go"),
-		`"`+oldName+`.log"`, `"`+newName+`.log"`,
+		`"`+oldBase+`.log"`, `"`+newBase+`.log"`,
 	)
 }
 
-func renameConfigFile(oldName, newName string) error {
-	oldPath := filepath.Join("config", oldName+".yaml")
-	newPath := filepath.Join("config", newName+".yaml")
+func renameConfigFile(oldBase, newBase string) error {
+	oldPath := filepath.Join("config", oldBase+".yaml")
+	newPath := filepath.Join("config", newBase+".yaml")
 	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
 		fmt.Printf("  跳过: %s 不存在\n", oldPath)
 		return nil
@@ -218,30 +259,26 @@ func renameConfigFile(oldName, newName string) error {
 		return fmt.Errorf("重命名 %s: %w", oldPath, err)
 	}
 	fmt.Printf("  已重命名: %s -> %s\n", oldPath, newPath)
-	return nil
+
+	// 配置文件内容里的默认引用(name、日志文件名等)一并替换
+	return replaceInFile(newPath, oldBase, newBase)
 }
 
-func renameCmdDir(oldName, newName string) error {
-	oldDir := filepath.Join("cmd", oldName)
-
-	var oldPath, oldPathRef string
-	switch {
-	case dirExists(oldDir):
-		oldPath = oldDir
-		oldPathRef = "cmd/" + oldName
-	default:
-		fmt.Printf("  跳过: cmd 下未找到 '%s' 目录\n", oldName)
+func renameCmdDir(oldBase, newBase string) error {
+	oldDir := filepath.Join("cmd", oldBase)
+	if !dirExists(oldDir) {
+		fmt.Printf("  跳过: cmd 下未找到 '%s' 目录\n", oldBase)
 		return nil
 	}
 
-	newDir := filepath.Join("cmd", newName)
-	if err := os.Rename(oldPath, newDir); err != nil {
-		return fmt.Errorf("重命名 %s: %w", oldPath, err)
+	newDir := filepath.Join("cmd", newBase)
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return fmt.Errorf("重命名 %s: %w", oldDir, err)
 	}
-	fmt.Printf("  已重命名: %s -> %s\n", oldPath, newDir)
+	fmt.Printf("  已重命名: %s -> %s\n", oldDir, newDir)
 
 	for _, f := range []string{"Makefile", "Dockerfile"} {
-		if err := replaceInFile(f, oldPathRef, "cmd/"+newName); err != nil {
+		if err := replaceInFile(f, "cmd/"+oldBase, "cmd/"+newBase); err != nil {
 			return err
 		}
 	}

@@ -614,10 +614,13 @@ go run scripts/replace.go -o go_template -n 新项目名
 
 1. 替换所有 import 路径中的 `go_template`
 2. 更新 `go.mod` 模块名
-3. 更新 `Makefile` / `Dockerfile` 中的引用
+3. 更新 `Makefile` / `Dockerfile` / GitHub Actions 工作流中的引用
 4. 重命名 `config/go_template.yaml` 和 `cmd/go_template/` 目录
 5. 执行 `go mod tidy` + 编译验证
 6. 失败自动 `git checkout .` 回滚
+
+> 提示: `新项目名` 既支持单段名(如 `batchAuth`),也支持模块路径形式(如 `aaaa/cccc`、`github.com/xxx`)。
+> import 路径与 `go.mod` 使用完整模块路径;二进制名、`config/*.yaml`、`cmd/` 目录等单段命名位置取路径最后一段。
 
 ---
 
